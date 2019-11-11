@@ -1,5 +1,10 @@
-import pygame, sys
+import pygame
+import sys
+import sqlite3
+
 from pygame.locals import *
+
+pygame.init()
 
 class puzzle():
 
@@ -8,17 +13,18 @@ class puzzle():
         self.height = kwargs['height']
         self.difficulty = kwargs['difficulty']
 
+# APPLICATION SIZE
+screen_width = 1024
+screen_height = 768
+DISPLAY = pygame.display.set_mode((screen_width,
+                                   screen_height))
+
+# COLORS
+WHITE = (230, 230, 230)
+BLACK = (50, 50, 50)
+BACKGROUND = (180, 180, 150)
+
 def main():
-    pygame.init()
-
-    screen_width = 1024
-    screen_height = 768
-    DISPLAY = pygame.display.set_mode((screen_width,
-                                       screen_height))
-
-    WHITE = (255, 255, 255)
-    BLACK = (0, 0, 0)
-    BACKGROUND = (180, 180, 150)
 
     DISPLAY.fill(BACKGROUND)
 
