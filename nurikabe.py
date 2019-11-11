@@ -1,59 +1,74 @@
+# Import packages
 import pygame
-import sys
-import sqlite3
-
 from pygame.locals import *
+import sys
+from sqlalchemy import Column, Integer, Boolean
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
+
+# Initialize components
 pygame.init()
+engine = create_engine('sqlite:///nurikabe_puzzles.sqlite')
+Base = declarative_base()
+session = sessionmaker(bind=engine)
+session = session()
 
-class puzzle():
 
-    def __init__(self, **kwargs):
-        self.width = kwargs['width']
-        self.height = kwargs['height']
-        self.difficulty = kwargs['difficulty']
+# Set up puzzle object
+class Puzzle_from_db(Base):
+    __tablename__ = 'puzzles'
+    puzzle_id = Column(Integer, primary_key=True)
+    catalog_num = Column(Integer)
+    width = Column(Integer)
+    height = Column(Integer)
+    difficulty = Column(Integer)
+    completed = Column(Boolean)
 
-# APPLICATION SIZE
+
+# Application settings
 screen_width = 1024
 screen_height = 768
 DISPLAY = pygame.display.set_mode((screen_width,
                                    screen_height))
 
-# COLORS
+# Colors
 WHITE = (230, 230, 230)
 BLACK = (50, 50, 50)
 BACKGROUND = (180, 180, 150)
 
-def main():
 
+# Begin drawing
+def main():
+    # Draw initial box
     DISPLAY.fill(BACKGROUND)
 
-    puzzle_width = 4
-    puzzle_height = 5
-    puzzle_difficulty = 'easy'
-    puzzle_parts = {'width':puzzle_width,
-                    'height':puzzle_height,
-                    'difficulty':puzzle_difficulty}
-    current_puzzle = puzzle(**puzzle_parts)
+    # Set up current puzzle object
+    puzzle_num = 0
 
-    puzzle_scale = 718 / current_puzzle.height
-    puzzle_pos_x = screen_width / 2 - current_puzzle.width * puzzle_scale / 2
-    puzzle_pos_y = screen_height / 2 - current_puzzle.height * puzzle_scale / 2
+    puzzle = session.query(Puzzle_from_db)\
+        .filter(Puzzle_from_db.puzzle_id == puzzle_num).first()
+    print(puzzle.height)
+
+    puzzle_scale = 718 / puzzle.height
+    puzzle_pos_x = screen_width / 2 - puzzle.width * puzzle_scale / 2
+    puzzle_pos_y = screen_height / 2 - puzzle.height * puzzle_scale / 2
 
     puzzle_size = (puzzle_pos_x,
                    puzzle_pos_y,
-                   current_puzzle.width * puzzle_scale,
-                   current_puzzle.height * puzzle_scale)
+                   puzzle.width * puzzle_scale,
+                   puzzle.height * puzzle_scale)
     border_size = (puzzle_pos_x - 10,
                    puzzle_pos_y - 10,
-                   current_puzzle.width * puzzle_scale + 20,
-                   current_puzzle.height * puzzle_scale + 20)
+                   puzzle.width * puzzle_scale + 20,
+                   puzzle.height * puzzle_scale + 20)
 
     pygame.draw.rect(
         DISPLAY, BLACK, border_size)
 
-    for x in range(current_puzzle.width):
-        for y in range(current_puzzle.height):
+    for x in range(puzzle.width):
+        for y in range(puzzle.height):
             pygame.draw.rect(
                 DISPLAY, WHITE, (x * puzzle_scale + puzzle_pos_x + 1,
                                  y * puzzle_scale + puzzle_pos_y + 1,
@@ -63,9 +78,9 @@ def main():
 
     font = pygame.font.Font('freesansbold.ttf', int(puzzle_scale))
     text = font.render('4', True, BLACK)
-    textRect = text.get_rect()
-    textRect.center = (500,500)
-    DISPLAY.blit(text, textRect)
+    textrect = text.get_rect()
+    textrect.center = (500, 500)
+    DISPLAY.blit(text, textrect)
 
     while True:
 
