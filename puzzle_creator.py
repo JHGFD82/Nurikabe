@@ -1,7 +1,7 @@
 # INITIALIZE TOOLS AND BUILD TABLES #
 
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer,\
-    Boolean, String, insert, func, orm
+    Boolean, String, insert, orm
 
 engine = create_engine('sqlite:///nurikabe_puzzles.sqlite')
 metadata = MetaData()
@@ -57,4 +57,7 @@ if session.query(puzzle).count() < 1:
     results2 = connection.execute(stmt_puzzle)
     results3 = connection.execute(stmt_space)
 
-print(session.query(puzzle).count())
+    stmt_space = insert(space).values(puzzle_id=0, space_x=3, space_y=3, space_n=0)
+    results4 = connection.execute(stmt_space)
+
+print(session.query(space).count())
