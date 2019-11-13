@@ -69,9 +69,9 @@ def main():
             self.color = WHITE
 
         def update(self):
-            if self.state:
+            if self.state == 1:
                 self.color = BLACK
-            else:
+            elif self.state == 2:
                 self.color = WHITE
 
     puzzle_scale = 418 / puzzle.height
@@ -117,10 +117,15 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                clicked_block = [s for s in puzzle_grid if s.rect.collidepoint(pos)]
-                clicked_block[0].state = 1
-                clicked_block[0].update()
-                print(clicked_block[0].__dict__)
+                try:
+                    clk = [s for s in puzzle_grid if s.rect.collidepoint(pos)][0]
+                except:
+                    clk = ''
+                else:
+                    clk.state += 1 if clk.state < 2 else -2
+                    clk.update()
+                    pygame.draw.rect(DISPLAY, clk.color, clk.rect)
+                    pygame.display.update(clk.rect)
 
             if event.type == QUIT:
                 pygame.quit()
