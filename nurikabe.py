@@ -7,14 +7,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-
 # Initialize components
 pygame.init()
 engine = create_engine('sqlite:///nurikabe_puzzles.sqlite')
 Base = declarative_base()
 session = sessionmaker(bind=engine)
 session = session()
-
 
 # Colors
 WHITE = (230, 230, 230)
@@ -58,21 +56,25 @@ def main():
     # Set up current puzzle object
     puzzle_num = 0
 
-    puzzle = session.query(PuzzleDB)\
+    puzzle = session.query(PuzzleDB) \
         .filter(PuzzleDB.puzzle_id == puzzle_num).first()
-    space = session.query(SpaceDB.space_n, SpaceDB.space_x, SpaceDB.space_y)\
+    space = session.query(SpaceDB.space_n, SpaceDB.space_x, SpaceDB.space_y) \
         .filter(SpaceDB.puzzle_id == puzzle_num)
 
     # Set up individual box object
     class PuzzleBox():
-        def __init__(self):
+        def __init__(self, rect):
+            self.rect = rect
             self.state = 0
-            if not self.state:
-                self.color = WHITE
-            else:
-                self.color = BLACK
+            self.color = WHITE
 
-    puzzle_scale = 718 / puzzle.height
+        def update(self):
+            if self.state:
+                self.color = BLACK
+            else:
+                self.color = WHITE
+
+    puzzle_scale = 418 / puzzle.height
     puzzle_pos_x = screen_width / 2 - puzzle.width * puzzle_scale / 2
     puzzle_pos_y = screen_height / 2 - puzzle.height * puzzle_scale / 2
 
@@ -88,30 +90,38 @@ def main():
     pygame.draw.rect(
         DISPLAY, BLACK, border_size)
 
-    puzzle_grid = [[Rect(x * puzzle_scale + puzzle_pos_x + 1,
-                        y * puzzle_scale + puzzle_pos_y + 1,
-                        puzzle_scale - 2,
-                        puzzle_scale - 2) for x in range(puzzle.width)] for y in range(puzzle.height)]
+    puzzle_grid = [PuzzleBox(Rect(x * puzzle_scale + puzzle_pos_x + 1,
+                                  y * puzzle_scale + puzzle_pos_y + 1,
+                                  puzzle_scale - 2,
+                                  puzzle_scale - 2))
+                   for x in range(puzzle.width) for y in range(puzzle.height)]
 
-    for x in range(puzzle.width):
-        for y in range(puzzle.height):
-            pygame.draw.rect(DISPLAY, WHITE, puzzle_grid[x][y])
+    for block in puzzle_grid:
+        pygame.draw.rect(DISPLAY, block.color, block.rect)
 
-    space_font = pygame.font.Font('freesansbold.ttf', int(puzzle_scale))
+    space_font = pygame.font.Font('freesansbold.ttf', int(puzzle_scale / 1.5))
     space_result = space.all()
 
-    for s in range(space.count()):
-        num_placement = puzzle_grid[space_result[s].space_x][space_result[s].space_y]
-        for t in range(2):
-            num_placement[t] += puzzle_scale / 2 - 1
-        current_num = str(space_result[s].space_n)
-        text = space_font.render(current_num, True, RED)
-        textrect = text.get_rect()
-        textrect.center = (num_placement[0], num_placement[1])
-        DISPLAY.blit(text, textrect)
+    # for s in range(space.count()):
+    #     num_placement = puzzle_grid[space_result[s].space_x][space_result[s].space_y]
+    #     for t in range(2):
+    #         num_placement[t] += puzzle_scale / 2 - 1
+    #     current_num = str(space_result[s].space_n)
+    #     text = space_font.render(current_num, True, RED)
+    #     textrect = text.get_rect()
+    #     textrect.center = (num_placement[0], num_placement[1])
+    #     DISPLAY.blit(text, textrect)
 
     while True:
         for event in pygame.event.get():
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                clicked_block = [s for s in puzzle_grid if s.rect.collidepoint(pos)]
+                clicked_block[0].state = 1
+                clicked_block[0].update()
+                print(clicked_block[0].__dict__)
+
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
