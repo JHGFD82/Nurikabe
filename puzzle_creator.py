@@ -54,6 +54,9 @@ if not engine.table_names():
     session.add(test)
     session.commit()
 
-    test = session.query(Space).filter_by(puzzle_id=1)
-    test[0:2].answer = 1
-    session.commit()
+space_for_answers = session.query(Space).filter_by(puzzle_id=1)
+space_change = [0,1,2,3,4,7,8,11,12,13,14,15]
+for x in space_change:
+    space_for_answers[x].answer = 1
+space_for_answers[5].n = 4
+session.commit()
