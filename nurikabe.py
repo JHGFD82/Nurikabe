@@ -15,8 +15,9 @@ session = sessionmaker(bind=engine)
 session = session()
 
 # Colors
-WHITE = (230, 230, 230)
-BLACK = (50, 50, 50)
+WHITE = (230, 230, 210)
+PUZZLE_BORDER = (50, 40, 20)
+BLACK = (0, 0, 0)
 RED = (240, 0, 0)
 BACKGROUND = (180, 180, 150)
 
@@ -95,7 +96,7 @@ def main():
 
     # Draw puzzle
     pygame.draw.rect(
-        DISPLAY, BLACK, border_size)
+        DISPLAY, PUZZLE_BORDER, border_size)
 
     puzzle_grid = [PuzzleBox(Rect(x * puzzle_scale + puzzle_pos_x + 1,
                                   y * puzzle_scale + puzzle_pos_y + 1,
@@ -109,34 +110,71 @@ def main():
     # Display guide numbers
     space_font = pygame.font.Font('freesansbold.ttf', int(puzzle_scale / 1.5))
     guide_num = [s for s in space_result if s.n is not None]
-    for s in guide_num:
-        text = space_font.render(str(s.n), True, BLACK)
+    guide_num_in_list = [(s.y - 1) * puzzle.width + s.x - 1 for s in guide_num]
+    for a, b in zip(guide_num, guide_num_in_list):
+        text = space_font.render(str(a.n), True, BLACK)
         textrect = text.get_rect()
-        new_x = s.x * puzzle_scale - (puzzle_scale / 2) + puzzle_pos_x
-        new_y = s.y * puzzle_scale - (puzzle_scale / 2)  + puzzle_pos_y + (puzzle_scale / 20)
-        textrect.center = (new_x, new_y)
+        textrect.center = (puzzle_grid[b].rect.x + puzzle_scale / 2 - 1,
+                           puzzle_grid[b].rect.y + puzzle_scale / 1.8 - 1)
         DISPLAY.blit(text, textrect)
+
+    def block_activate(m_pos, state):
+        clicked = ''
+        try:
+            clicked = [s for s in puzzle_grid if
+                       s.rect.collidepoint(m_pos) and
+                       puzzle_grid.index(s) not in guide_num_in_list][0]
+        except IndexError:
+            pass
+        else:
+            if state:
+                clicked.state = state
+            else:
+                clicked.state += 1 if clicked.state < 2 else -2
+            clicked.update()
+            pygame.draw.rect(DISPLAY, clicked.color, clicked.rect)
+            pygame.display.update(clicked.rect)
+        return clicked
+
+    drag = False
+    clk = ''
+    held_state = ''
+    done = False
 
     # Actual screen stuff
     while True:
         for event in pygame.event.get():
-
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                try:
-                    clk = [s for s in puzzle_grid if s.rect.collidepoint(pos)][0]
-                except IndexError:
-                    pass
-                else:
-                    clk.state += 1 if clk.state < 2 else -2
-                    clk.update()
-                    pygame.draw.rect(DISPLAY, clk.color, clk.rect)
-                    pygame.display.update(clk.rect)
-                    print('YAAAAAAAY!') if [a.state for a in puzzle_grid] == [b.answer for b in space_result] else ''
+                drag = True
+                clk = block_activate(pos, '')
+                held_state = clk.state
+                print('on')
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                drag = False
+                done = True if [a.state for a in puzzle_grid] == \
+                               [b.answer for b in space_result] else False
+                print('off')
 
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+
+        if drag:
+            pos = pygame.mouse.get_pos()
+            try:
+                grabbed = [s for s in puzzle_grid if
+                           s.rect.collidepoint(pos) and
+                           puzzle_grid.index(s) not in guide_num_in_list][0]
+            except IndexError:
+                pass
+            else:
+                if grabbed != clk:
+                    clk = block_activate(pos, held_state)
+
+        pygame.quit() if done else False
+
         pygame.display.update()
 
 
