@@ -149,13 +149,11 @@ def main():
                 drag = True
                 clk = block_activate(pos, '')
                 held_state = clk.state
-                print('on')
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 drag = False
                 done = True if [a.state for a in puzzle_grid] == \
                                [b.answer for b in space_result] else False
-                print('off')
 
             if event.type == QUIT:
                 pygame.quit()
