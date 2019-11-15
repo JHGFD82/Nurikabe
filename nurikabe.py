@@ -41,7 +41,6 @@ class SpaceDB(Base):
     x = Column(Integer)
     y = Column(Integer)
     n = Column(Integer)
-    answer = Column(Integer)
 
 
 # Application settings
@@ -57,11 +56,11 @@ def main():
     DISPLAY.fill(BACKGROUND)
 
     # Set up current puzzle object
-    puzzle_num = 1
+    puzzle_num = 3
 
     puzzle = session.query(PuzzleDB) \
         .filter(PuzzleDB.id == puzzle_num).first()
-    space = session.query(SpaceDB.id, SpaceDB.n, SpaceDB.x, SpaceDB.y, SpaceDB.answer) \
+    space = session.query(SpaceDB.id, SpaceDB.x, SpaceDB.y, SpaceDB.n) \
         .filter(SpaceDB.puzzle_id == puzzle_num)
     space_result = space.all()
 
@@ -80,7 +79,7 @@ def main():
 
     # Establish puzzle scale for objects on screen
     puzzle_scale = 0
-    for i in range(100, 2000, 100):
+    for i in range(100, 700, 100):
         puzzle_scale = i / puzzle.height
         if puzzle_scale > 70:
             break
@@ -102,20 +101,25 @@ def main():
                                   y * puzzle_scale + puzzle_pos_y + 1,
                                   puzzle_scale - 2,
                                   puzzle_scale - 2))
-                   for x in range(puzzle.width) for y in range(puzzle.height)]
+                   for y in range(puzzle.height) for x in range(puzzle.width)]
 
     for block in puzzle_grid:
         pygame.draw.rect(DISPLAY, block.color, block.rect)
 
+    def center_draw(shape):
+        x = shape.x + puzzle_scale / 2 - 1
+        y = shape.y + puzzle_scale / 1.8 - 1
+        result = (x, y)
+        return result
+
     # Display guide numbers
     space_font = pygame.font.Font('freesansbold.ttf', int(puzzle_scale / 1.5))
-    guide_num = [s for s in space_result if s.n is not None]
+    guide_num = [s for s in space_result if s.n > 0]
     guide_num_in_list = [(s.y - 1) * puzzle.width + s.x - 1 for s in guide_num]
     for a, b in zip(guide_num, guide_num_in_list):
         text = space_font.render(str(a.n), True, BLACK)
         textrect = text.get_rect()
-        textrect.center = (puzzle_grid[b].rect.x + puzzle_scale / 2 - 1,
-                           puzzle_grid[b].rect.y + puzzle_scale / 1.8 - 1)
+        textrect.center = center_draw(puzzle_grid[b].rect)
         DISPLAY.blit(text, textrect)
 
     def block_activate(m_pos, state):
@@ -133,7 +137,9 @@ def main():
                 clicked.state += 1 if clicked.state < 2 else -2
             clicked.update()
             pygame.draw.rect(DISPLAY, clicked.color, clicked.rect)
-            pygame.display.update(clicked.rect)
+            if clicked.state == 2:
+                pygame.draw.circle(DISPLAY, BLACK, center_draw(clicked.rect), 3)
+            pygame.display.flip()
         return clicked
 
     drag = False
@@ -148,14 +154,15 @@ def main():
                 pos = pygame.mouse.get_pos()
                 drag = True
                 clk = block_activate(pos, '')
-                held_state = clk.state
-                print('on')
+                try:
+                    held_state = clk.state
+                except AttributeError:
+                    drag = False
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 drag = False
                 done = True if [a.state for a in puzzle_grid] == \
-                               [b.answer for b in space_result] else False
-                print('off')
+                               [1 if b.n == 0 else 0 for b in space_result] else False
 
             if event.type == QUIT:
                 pygame.quit()
