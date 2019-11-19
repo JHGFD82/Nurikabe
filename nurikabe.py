@@ -16,7 +16,7 @@ session = session()
 
 # Colors
 WHITE = (230, 230, 210)
-PUZZLE_BORDER = (50, 40, 20)
+BORDER_COLOR = (50, 40, 20)
 BLACK = (0, 0, 0)
 RED = (240, 0, 0)
 BACKGROUND = (180, 180, 150)
@@ -52,6 +52,9 @@ DISPLAY = pygame.display.set_mode((screen_width,
 
 # Begin drawing
 def main():
+    # Set up list of undo moves
+    undo_list = []
+
     # Draw initial box
     DISPLAY.fill(BACKGROUND)
 
@@ -64,7 +67,13 @@ def main():
         .filter(SpaceDB.puzzle_id == puzzle_num)
     space_result = space.all()
 
-    # Set up individual box object
+    # Set up individual box object for tools
+    class ToolBox:
+        def __init__(self, rect):
+            self.rect = rect
+            self.color = WHITE
+
+    # Set up individual box object within puzzle
     class PuzzleBox:
         def __init__(self, rect):
             self.rect = rect
@@ -74,7 +83,7 @@ def main():
         def update(self):
             if self.state == 1:
                 self.color = BLACK
-            elif self.state == 2:
+            else:
                 self.color = WHITE
 
     # Establish puzzle scale for objects on screen
@@ -88,15 +97,28 @@ def main():
     puzzle_pos_x = screen_width / 2 - puzzle.width * puzzle_scale / 2
     puzzle_pos_y = screen_height / 2 - puzzle.height * puzzle_scale / 2
 
-    border_size = (puzzle_pos_x - 10,
-                   puzzle_pos_y - 10,
-                   puzzle.width * puzzle_scale + 20,
-                   puzzle.height * puzzle_scale + 20)
+    puzzle_border = Rect(puzzle_pos_x - 10,
+                         puzzle_pos_y - 10,
+                         puzzle.width * puzzle_scale + 20,
+                         puzzle.height * puzzle_scale + 20)
 
     # Draw puzzle
     pygame.draw.rect(
-        DISPLAY, PUZZLE_BORDER, border_size)
+        DISPLAY, BORDER_COLOR, puzzle_border)
 
+    # Set up puzzle tools
+    tool_border = Rect(puzzle_border[0] + puzzle_border[2] + 10,
+                       puzzle_border[1], 70, 70)
+    pygame.draw.rect(
+        DISPLAY, BORDER_COLOR, tool_border)
+
+    tool_grid = [ToolBox(Rect((tool_border[0] + 10, tool_border[1] + 10,
+                               tool_border[2] - 20, tool_border[3] - 20)))]
+
+    for tool in tool_grid:
+        pygame.draw.rect(DISPLAY, WHITE, tool)
+
+    # Set up puzzle box grid
     puzzle_grid = [PuzzleBox(Rect(x * puzzle_scale + puzzle_pos_x + 1,
                                   y * puzzle_scale + puzzle_pos_y + 1,
                                   puzzle_scale - 2,
@@ -131,15 +153,21 @@ def main():
         except IndexError:
             pass
         else:
-            if state:
+            # Undo steps
+            undo_list.append({'box_num': puzzle_grid.index(clicked),
+                              'state': clicked.state})
+
+            if state or state == 0:
                 clicked.state = state
             else:
                 clicked.state += 1 if clicked.state < 2 else -2
+
             clicked.update()
             pygame.draw.rect(DISPLAY, clicked.color, clicked.rect)
             if clicked.state == 2:
                 pygame.draw.circle(DISPLAY, BLACK, center_draw(clicked.rect), 3)
-            pygame.display.flip()
+            pygame.display.update(clicked)
+
         return clicked
 
     drag = False
@@ -149,25 +177,44 @@ def main():
 
     # Actual screen stuff
     while True:
+
+        # On event
         for event in pygame.event.get():
+
+            # On event: click
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                drag = True
-                clk = block_activate(pos, '')
-                try:
-                    held_state = clk.state
-                except AttributeError:
-                    drag = False
 
+                # On event: click within puzzle
+                if puzzle_border.collidepoint(pos[0], pos[1]):
+                    drag = True
+                    clk, undo_count = block_activate(pos, '')
+                    try:
+                        held_state = clk.state
+                    except AttributeError:
+                        drag = False
+
+                # On event: click within tools
+                elif tool_border.collidepoint(pos[0], pos[1]):
+                    undo_box = puzzle_grid[undo_list[-1]['box_num']]
+                    undo_box.state = undo_list[-1]['state']
+                    undo_box.update()
+                    pygame.draw.rect(DISPLAY, undo_box.color, undo_box.rect)
+                    pygame.display.update(undo_box)
+                    undo_list.__delitem__(-1)
+
+            # On event: release
             elif event.type == pygame.MOUSEBUTTONUP:
                 drag = False
                 done = True if [a.state for a in puzzle_grid] == \
                                [1 if b.n == 0 else 0 for b in space_result] else False
 
+            # On event: quit
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
 
+        # On drag
         if drag:
             pos = pygame.mouse.get_pos()
             try:
@@ -178,7 +225,7 @@ def main():
                 pass
             else:
                 if grabbed != clk:
-                    clk = block_activate(pos, held_state)
+                    clk, undo_count = block_activate(pos, held_state)
 
         pygame.quit() if done else False
 
